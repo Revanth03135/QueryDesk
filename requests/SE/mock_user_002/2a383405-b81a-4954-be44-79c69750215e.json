@@ -3,9 +3,11 @@
   "query": [
     "Testing se_query"
   ],
-  "response": [],
+  "response": [
+    "completed"
+  ],
   "initial_timestamp": "2026-05-20T15:26:21",
   "submission_timestamp": "2026-05-20T15:26:21",
-  "completion_timestamp": null,
-  "status": "in-progress"
+  "completion_timestamp": "2026-05-20T16:02:34",
+  "status": "completed"
 }

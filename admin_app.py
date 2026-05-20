@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 from datetime import datetime
@@ -175,6 +176,94 @@ def render_sidebar(all_requests):
     return selected, show_analytics
 
 
+def normalize_attachment_groups(
+    attachments: list[Any],
+    query_count: int,
+) -> list[list[dict[str, Any]]]:
+    normalized: list[list[dict[str, Any]]] = []
+
+    if isinstance(attachments, list):
+        for item in attachments:
+            if isinstance(item, list):
+                normalized.append([entry for entry in item if isinstance(entry, dict)])
+            elif isinstance(item, dict):
+                normalized.append([item])
+            else:
+                normalized.append([])
+
+    while len(normalized) < query_count:
+        normalized.append([])
+
+    return normalized[:query_count]
+
+
+def format_file_size(size_bytes: int | None) -> str:
+    if not size_bytes:
+        return "0 B"
+
+    units = ["B", "KB", "MB", "GB", "TB"]
+    size = float(size_bytes)
+
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            return f"{size:.1f} {unit}" if unit != "B" else f"{int(size)} {unit}"
+        size /= 1024
+
+    return f"{int(size_bytes)} B"
+
+
+def get_attachment_bytes(user_id: str, attachment: dict[str, Any]) -> bytes:
+    relative_path = attachment.get("relative_path", "")
+    if not relative_path:
+        return b""
+
+    attachment_path = get_department_directory() / user_id / relative_path
+    if attachment_path.exists():
+        return attachment_path.read_bytes()
+
+    return b""
+
+
+def build_pdf_data_url(file_bytes: bytes) -> str:
+    encoded = base64.b64encode(file_bytes).decode("utf-8")
+    return f"data:application/pdf;base64,{encoded}"
+
+
+def render_attachment_downloads(user_id: str, attachments: list[dict[str, Any]], prefix: str):
+    if not attachments:
+        return
+
+    st.markdown("**Attachments**")
+    for index, attachment in enumerate(attachments):
+        file_name = attachment.get("file_name", "attachment")
+        size_label = format_file_size(attachment.get("size_bytes"))
+        mime_type = (attachment.get("mime_type") or "application/octet-stream").lower()
+        file_bytes = get_attachment_bytes(user_id, attachment)
+
+        if not file_bytes:
+            st.caption(f"{file_name} ({size_label}) - file not found")
+            continue
+
+        if mime_type.startswith("image/"):
+            st.image(file_bytes, caption=f"{file_name} ({size_label})", use_container_width=True)
+
+        if mime_type == "application/pdf":
+            pdf_url = build_pdf_data_url(file_bytes)
+            st.markdown(
+                f'<a href="{pdf_url}" target="_blank" rel="noopener noreferrer">Open PDF: {file_name}</a>',
+                unsafe_allow_html=True,
+            )
+
+        st.download_button(
+            label=f"Download {file_name} ({size_label})",
+            data=file_bytes,
+            file_name=file_name,
+            mime=mime_type,
+            key=f"{prefix}_attachment_{index}_{attachment.get('stored_name', file_name)}",
+            use_container_width=True,
+        )
+
+
 def render_chat(record, user_id):
     submitted_at = get_submission_timestamp(record)
     st.subheader(f"Request: {record['name']}")
@@ -184,6 +273,10 @@ def render_chat(record, user_id):
 
     queries = record.get("query", [])
     responses = record.get("response", [])
+    attachment_groups = normalize_attachment_groups(
+        record.get("user_attachments", []),
+        len(queries),
+    )
 
     max_len = max(len(queries), len(responses))
 
@@ -191,6 +284,12 @@ def render_chat(record, user_id):
         if i < len(queries):
             with st.chat_message("user"):
                 st.markdown(queries[i])
+                attachments = attachment_groups[i] if i < len(attachment_groups) else []
+                render_attachment_downloads(
+                    user_id,
+                    attachments,
+                    prefix=f"admin_user_query_{record.get('name', 'request')}_{i}",
+                )
 
         if i < len(responses):
             with st.chat_message("assistant"):
