@@ -1,10 +1,11 @@
 {
   "name": "bvdsh",
   "query": [
-    "bh"
+    "bh",
+    "query2"
   ],
   "response": [],
   "submission_timestamp": "2026-05-20T11:21:59",
-  "completion_timestamp": "2026-05-20T11:49:41",
-  "status": "completed"
+  "completion_timestamp": null,
+  "status": "in-progress"
 }

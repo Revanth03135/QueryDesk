@@ -11,7 +11,7 @@ import streamlit as st
 
 
 REQUESTS_DIR = Path(__file__).parent / "requests"
-MOCK_USER_ID = "mock_user_002"
+MOCK_USER_ID = "mock_user_001"
 
 
 class RequestStatus:
@@ -178,6 +178,10 @@ def append_query_to_request(user_id: str, request_id: str, new_query: str) -> No
         return
 
     record.query.append(clean_query)
+    if record.status == RequestStatus.COMPLETED:
+        record.status = RequestStatus.IN_PROGRESS
+        record.completion_timestamp = None
+
     save_request(record, user_id)
 
 
