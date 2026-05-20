@@ -10,6 +10,7 @@ import streamlit as st
 
 REQUESTS_DIR = Path(__file__).parent / "requests"
 DEPARTMENT = "Marketing"
+DEPARTMENT_OPTIONS = ["SE", "Marketing"]
 
 
 class RequestStatus:
@@ -39,8 +40,12 @@ def get_submission_timestamp(payload: dict[str, Any]) -> str:
     )
 
 
+def get_current_department() -> str:
+    return st.session_state.get("selected_department", DEPARTMENT)
+
+
 def get_department_directory() -> Path:
-    department_dir = REQUESTS_DIR / DEPARTMENT
+    department_dir = REQUESTS_DIR / get_current_department()
     department_dir.mkdir(parents=True, exist_ok=True)
     return department_dir
 
@@ -401,6 +406,27 @@ def main():
     if "show_analytics" not in st.session_state:
         st.session_state.show_analytics = False
 
+    if "selected_department" not in st.session_state:
+        st.session_state.selected_department = DEPARTMENT
+
+    title_col, department_col = st.columns([5, 1.5], vertical_alignment="center")
+
+    with title_col:
+        st.title("QueryDesk Admin")
+
+    with department_col:
+        selected_department = st.selectbox(
+            "Department",
+            DEPARTMENT_OPTIONS,
+            index=DEPARTMENT_OPTIONS.index(st.session_state.selected_department),
+        )
+
+    if selected_department != st.session_state.selected_department:
+        st.session_state.selected_department = selected_department
+        st.session_state.selected_request = None
+        st.session_state.show_analytics = False
+        st.rerun()
+
     all_requests = get_all_requests()
 
     selected, show_analytics = render_sidebar(all_requests)
@@ -412,8 +438,6 @@ def main():
     if selected:
         st.session_state.selected_request = selected
         st.session_state.show_analytics = False
-
-    st.title("QueryDesk Admin")
 
     if st.session_state.show_analytics:
         render_analytics(all_requests)
