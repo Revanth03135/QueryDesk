@@ -9,6 +9,7 @@ from typing import Any
  
  
 REQUESTS_DIR = Path(__file__).parent / "requests"
+DEPARTMENT = "SE"
 ALERT_THRESHOLD_SECONDS = 60
  
  
@@ -126,14 +127,22 @@ QueryDesk
     return send_email(subject, body, ADMIN_EMAILS)
  
  
+def get_department_directory() -> Path:
+    department_dir = REQUESTS_DIR / DEPARTMENT
+    department_dir.mkdir(parents=True, exist_ok=True)
+    return department_dir
+ 
+ 
 def check_and_send_alerts() -> list[str]:
     now = datetime.now()
     alerted_requests: list[str] = []
  
-    if not REQUESTS_DIR.exists():
+    department_dir = get_department_directory()
+ 
+    if not department_dir.exists():
         return alerted_requests
  
-    for user_dir in REQUESTS_DIR.iterdir():
+    for user_dir in department_dir.iterdir():
         if not user_dir.is_dir():
             continue
  
@@ -186,10 +195,12 @@ def check_and_send_alerts() -> list[str]:
 def process_new_request_notifications() -> list[str]:
     notified_requests: list[str] = []
  
-    if not REQUESTS_DIR.exists():
+    department_dir = get_department_directory()
+ 
+    if not department_dir.exists():
         return notified_requests
  
-    for user_dir in REQUESTS_DIR.iterdir():
+    for user_dir in department_dir.iterdir():
         if not user_dir.is_dir():
             continue
  

@@ -9,6 +9,7 @@ import streamlit as st
 
 
 REQUESTS_DIR = Path(__file__).parent / "requests"
+DEPARTMENT = "Marketing"
 
 
 class RequestStatus:
@@ -38,13 +39,20 @@ def get_submission_timestamp(payload: dict[str, Any]) -> str:
     )
 
 
+def get_department_directory() -> Path:
+    department_dir = REQUESTS_DIR / DEPARTMENT
+    department_dir.mkdir(parents=True, exist_ok=True)
+    return department_dir
+
+
 def get_all_requests():
     records = []
+    department_dir = get_department_directory()
 
-    if not REQUESTS_DIR.exists():
+    if not department_dir.exists():
         return records
 
-    for user_dir in REQUESTS_DIR.iterdir():
+    for user_dir in department_dir.iterdir():
         if not user_dir.is_dir():
             continue
 
@@ -61,12 +69,12 @@ def get_all_requests():
 
 
 def load_request(user_id: str, request_id: str):
-    path = REQUESTS_DIR / user_id / f"{request_id}.json"
+    path = get_department_directory() / user_id / f"{request_id}.json"
     return read_json(path, None)
 
 
 def save_request(user_id: str, request_id: str, payload: dict):
-    path = REQUESTS_DIR / user_id / f"{request_id}.json"
+    path = get_department_directory() / user_id / f"{request_id}.json"
     write_json(path, payload)
 
 
@@ -95,7 +103,7 @@ def mark_completed(user_id: str, request_id: str):
     save_request(user_id, request_id, record)
 
     # update tracking.json
-    tracking_path = REQUESTS_DIR / user_id / "tracking.json"
+    tracking_path = get_department_directory() / user_id / "tracking.json"
     tracking_entries = read_json(tracking_path, [])
 
     for entry in tracking_entries:

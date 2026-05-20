@@ -3,7 +3,7 @@
     "query_id": "b09c954b-69d4-43a1-b09a-5a4b0c77c167",
     "name": "test_3",
     "latest_submission_timestamp": "2026-05-20T12:37:00",
-    "status": "in-progress",
+    "status": "completed",
     "request_mail_sent": true,
     "request_mail_sent_at": "2026-05-20T14:31:16",
     "alert_mail_sent": true,
