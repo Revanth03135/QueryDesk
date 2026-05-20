@@ -11,7 +11,7 @@ import streamlit as st
 
 
 REQUESTS_DIR = Path(__file__).parent / "requests"
-MOCK_USER_ID = "mock_user_001"
+MOCK_USER_ID = "mock_user_002"
 
 
 class RequestStatus:
@@ -26,6 +26,7 @@ class QueryRecord:
     name: str
     query: list[str]
     response: list[str]
+    initial_timestamp: str
     submission_timestamp: str
     completion_timestamp: str | None
     status: str
@@ -35,6 +36,7 @@ class QueryRecord:
             "name": self.name,
             "query": self.query,
             "response": self.response,
+            "initial_timestamp": self.initial_timestamp,
             "submission_timestamp": self.submission_timestamp,
             "completion_timestamp": self.completion_timestamp,
             "status": self.status,
@@ -77,7 +79,7 @@ def update_tracking_entry(
     user_id: str,
     request_id: str,
     name: str,
-    submission_timestamp: str,
+    latest_submission_timestamp: str,
     status: str,
 ) -> None:
     user_dir = ensure_user_directory(user_id)
@@ -88,7 +90,7 @@ def update_tracking_entry(
     for entry in entries:
         if entry.get("query_id") == request_id:
             entry["name"] = name
-            entry["submission_timestamp"] = submission_timestamp
+            entry["latest_submission_timestamp"] = latest_submission_timestamp
             entry["status"] = status
             updated = True
             break
@@ -98,7 +100,7 @@ def update_tracking_entry(
             {
                 "query_id": request_id,
                 "name": name,
-                "submission_timestamp": submission_timestamp,
+                "latest_submission_timestamp": latest_submission_timestamp,
                 "status": status,
             }
         )
@@ -106,7 +108,7 @@ def update_tracking_entry(
     # Sort tracking entries by timestamp (latest first)
     try:
         entries.sort(
-            key=lambda x: x.get("submission_timestamp", ""),
+            key=lambda x: x.get("latest_submission_timestamp", ""),
             reverse=True,
         )
     except Exception:
@@ -125,12 +127,16 @@ def load_request(user_id: str, request_id: str) -> QueryRecord | None:
     if not isinstance(payload, dict):
         return None
 
+    submission_timestamp = payload.get("submission_timestamp", "")
+    initial_timestamp = payload.get("initial_timestamp", submission_timestamp)
+
     return QueryRecord(
         request_id=request_id,
         name=payload.get("name", ""),
         query=payload.get("query", []),
         response=payload.get("response", []),
-        submission_timestamp=payload.get("submission_timestamp", ""),
+        initial_timestamp=initial_timestamp,
+        submission_timestamp=submission_timestamp,
         completion_timestamp=payload.get("completion_timestamp"),
         status=payload.get("status", RequestStatus.IN_PROGRESS),
     )
@@ -143,7 +149,7 @@ def save_request(record: QueryRecord, user_id: str) -> None:
         user_id=user_id,
         request_id=record.request_id,
         name=record.name,
-        submission_timestamp=record.submission_timestamp,
+        latest_submission_timestamp=record.submission_timestamp,
         status=record.status,
     )
 
@@ -160,6 +166,7 @@ def create_new_request(user_id: str, name: str, initial_query: str) -> str:
         name=name.strip(),
         query=[initial_query.strip()],
         response=[],
+        initial_timestamp=timestamp,
         submission_timestamp=timestamp,
         completion_timestamp=None,
         status=RequestStatus.IN_PROGRESS,
@@ -178,10 +185,11 @@ def append_query_to_request(user_id: str, request_id: str, new_query: str) -> No
         return
 
     record.query.append(clean_query)
+    record.submission_timestamp = generate_timestamp()
     if record.status == RequestStatus.COMPLETED:
         record.status = RequestStatus.IN_PROGRESS
-        record.completion_timestamp = None
 
+    record.completion_timestamp = None
     save_request(record, user_id)
 
 
