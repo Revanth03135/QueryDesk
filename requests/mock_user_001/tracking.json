@@ -1,8 +1,14 @@
 [
   {
+    "query_id": "76abd3e1-1da8-43bc-a9e3-240e54c9d1b6",
+    "name": "gdhsa",
+    "submission_timestamp": "2026-05-20T11:21:26",
+    "status": "completed"
+  },
+  {
     "query_id": "8263be14-ec30-4266-9195-37044b3a55d1",
     "name": "test_1",
     "submission_timestamp": "2026-05-20T10:54:14",
-    "status": "in-progress"
+    "status": "completed"
   }
 ]

@@ -11,7 +11,7 @@ import streamlit as st
 
 
 REQUESTS_DIR = Path(__file__).parent / "requests"
-MOCK_USER_ID = "mock_user_001"
+MOCK_USER_ID = "mock_user_002"
 
 
 class RequestStatus:
@@ -102,6 +102,15 @@ def update_tracking_entry(
                 "status": status,
             }
         )
+
+    # Sort tracking entries by timestamp (latest first)
+    try:
+        entries.sort(
+            key=lambda x: x.get("submission_timestamp", ""),
+            reverse=True,
+        )
+    except Exception:
+        pass
 
     write_json_file(tracking_file, entries)
 
