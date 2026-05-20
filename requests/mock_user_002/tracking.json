@@ -1,9 +1,23 @@
 [
   {
+    "query_id": "b09c954b-69d4-43a1-b09a-5a4b0c77c167",
+    "name": "test_3",
+    "latest_submission_timestamp": "2026-05-20T12:37:00",
+    "status": "in-progress",
+    "request_mail_sent": true,
+    "request_mail_sent_at": "2026-05-20T14:31:16",
+    "alert_mail_sent": true,
+    "alert_mail_sent_at": "2026-05-20T14:31:21"
+  },
+  {
     "query_id": "4bc34fc6-b3cc-4321-b1f4-5601ff03e470",
     "name": "bvdsh",
     "submission_timestamp": "2026-05-20T11:21:59",
     "status": "in-progress",
-    "latest_submission_timestamp": "2026-05-20T12:29:58"
+    "latest_submission_timestamp": "2026-05-20T12:29:58",
+    "request_mail_sent": true,
+    "request_mail_sent_at": "2026-05-20T14:31:21",
+    "alert_mail_sent": true,
+    "alert_mail_sent_at": "2026-05-20T14:31:21"
   }
 ]
