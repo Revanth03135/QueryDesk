@@ -70,7 +70,21 @@ def append_admin_response(user_id: str, request_id: str, response: str):
     responses.append(response)
     record["response"] = responses
 
+    # admin handled the update → clear user update alert
+    if "updated" in record:
+        record["updated"] = False
+
     save_request(user_id, request_id, record)
+
+    # update tracking.json as well
+    tracking_path = REQUESTS_DIR / user_id / "tracking.json"
+    tracking_entries = read_json(tracking_path, [])
+
+    for entry in tracking_entries:
+        if entry.get("query_id") == request_id:
+            entry["updated"] = False
+
+    write_json(tracking_path, tracking_entries)
 
 
 def mark_completed(user_id: str, request_id: str):
@@ -141,6 +155,11 @@ def render_sidebar(all_requests):
 
     for r in filtered:
         label = f"{r['name']} | {r['status']} | {r['submission_timestamp']}"
+
+        # highlight requests updated by user
+        if r.get("updated"):
+            label = "⚠ " + label
+
         if st.sidebar.button(label, key=f"{r['user_id']}_{r['query_id']}"):
             selected = r
 
@@ -175,6 +194,21 @@ def main():
         st.session_state.selected_request = None
 
     all_requests = get_all_requests()
+
+    # Initialize session memory for alerts
+    if "shown_update_alerts" not in st.session_state:
+        st.session_state.shown_update_alerts = set()
+
+    # Popup alert only once per update
+    for r in all_requests:
+        req_id = r.get("query_id")
+        if r.get("updated") and req_id not in st.session_state.shown_update_alerts:
+            st.toast(f"User updated request: {r.get('name')} ({req_id})", icon="⚠")
+            st.session_state.shown_update_alerts.add(req_id)
+
+        # If admin already handled it (updated cleared), remove from memory
+        if not r.get("updated") and req_id in st.session_state.shown_update_alerts:
+            st.session_state.shown_update_alerts.remove(req_id)
 
     selected = render_sidebar(all_requests)
 
