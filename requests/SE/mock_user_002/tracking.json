@@ -3,6 +3,8 @@
     "query_id": "2a383405-b81a-4954-be44-79c69750215e",
     "name": "se_query_1",
     "latest_submission_timestamp": "2026-05-20T15:26:21",
-    "status": "completed"
+    "status": "completed",
+    "request_mail_sent": true,
+    "request_mail_sent_at": "2026-05-21T12:08:15"
   }
 ]
