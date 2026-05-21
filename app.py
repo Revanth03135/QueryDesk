@@ -15,7 +15,6 @@ import streamlit as st
 
 
 REQUESTS_DIR = Path(__file__).parent / "requests"
-DEPARTMENT = "Marketing"
 MOCK_USER_ID = "mock_user_002"
 
 
@@ -50,14 +49,13 @@ class QueryRecord:
         }
 
 
-def get_department_directory() -> Path:
-    department_dir = REQUESTS_DIR / DEPARTMENT
-    department_dir.mkdir(parents=True, exist_ok=True)
-    return department_dir
+def ensure_requests_directory() -> Path:
+    REQUESTS_DIR.mkdir(parents=True, exist_ok=True)
+    return REQUESTS_DIR
 
 
 def ensure_user_directory(user_id: str) -> Path:
-    user_dir = get_department_directory() / user_id
+    user_dir = ensure_requests_directory() / user_id
     user_dir.mkdir(parents=True, exist_ok=True)
 
     tracking_file = user_dir / "tracking.json"

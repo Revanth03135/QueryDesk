@@ -12,8 +12,6 @@ import streamlit as st
 
 
 REQUESTS_DIR = Path(__file__).parent / "requests"
-DEPARTMENT = "Marketing"
-DEPARTMENT_OPTIONS = ["SE", "Marketing"]
 
 
 class RequestStatus:
@@ -43,24 +41,19 @@ def get_submission_timestamp(payload: dict[str, Any]) -> str:
     )
 
 
-def get_current_department() -> str:
-    return st.session_state.get("selected_department", DEPARTMENT)
-
-
-def get_department_directory() -> Path:
-    department_dir = REQUESTS_DIR / get_current_department()
-    department_dir.mkdir(parents=True, exist_ok=True)
-    return department_dir
+def ensure_requests_directory() -> Path:
+    REQUESTS_DIR.mkdir(parents=True, exist_ok=True)
+    return REQUESTS_DIR
 
 
 def get_all_requests():
     records = []
-    department_dir = get_department_directory()
+    requests_dir = ensure_requests_directory()
 
-    if not department_dir.exists():
+    if not requests_dir.exists():
         return records
 
-    for user_dir in department_dir.iterdir():
+    for user_dir in requests_dir.iterdir():
         if not user_dir.is_dir():
             continue
 
@@ -77,12 +70,12 @@ def get_all_requests():
 
 
 def load_request(user_id: str, request_id: str):
-    path = get_department_directory() / user_id / f"{request_id}.json"
+    path = ensure_requests_directory() / user_id / f"{request_id}.json"
     return read_json(path, None)
 
 
 def save_request(user_id: str, request_id: str, payload: dict):
-    path = get_department_directory() / user_id / f"{request_id}.json"
+    path = ensure_requests_directory() / user_id / f"{request_id}.json"
     write_json(path, payload)
 
 
@@ -111,7 +104,7 @@ def mark_completed(user_id: str, request_id: str):
     save_request(user_id, request_id, record)
 
     # update tracking.json
-    tracking_path = get_department_directory() / user_id / "tracking.json"
+    tracking_path = ensure_requests_directory() / user_id / "tracking.json"
     tracking_entries = read_json(tracking_path, [])
 
     for entry in tracking_entries:
@@ -219,7 +212,7 @@ def get_attachment_bytes(user_id: str, attachment: dict[str, Any]) -> bytes:
     if not relative_path:
         return b""
 
-    attachment_path = get_department_directory() / user_id / relative_path
+    attachment_path = ensure_requests_directory() / user_id / relative_path
     if attachment_path.exists():
         return attachment_path.read_bytes()
 
@@ -656,26 +649,7 @@ def main():
     if "show_analytics" not in st.session_state:
         st.session_state.show_analytics = False
 
-    if "selected_department" not in st.session_state:
-        st.session_state.selected_department = DEPARTMENT
-
-    title_col, department_col = st.columns([5, 1.5], vertical_alignment="center")
-
-    with title_col:
-        st.title("QueryDesk Admin")
-
-    with department_col:
-        selected_department = st.selectbox(
-            "Department",
-            DEPARTMENT_OPTIONS,
-            index=DEPARTMENT_OPTIONS.index(st.session_state.selected_department),
-        )
-
-    if selected_department != st.session_state.selected_department:
-        st.session_state.selected_department = selected_department
-        st.session_state.selected_request = None
-        st.session_state.show_analytics = False
-        st.rerun()
+    st.title("QueryDesk Admin")
 
     all_requests = get_all_requests()
 
