@@ -1,9 +1,13 @@
 {
   "name": "testing files",
   "query": [
-    "Uploaded two files"
+    "Uploaded two files",
+    "Attaching supporting douments"
   ],
-  "response": [],
+  "response": [
+    "We will look into it",
+    "Processing your request"
+  ],
   "user_attachments": [
     [
       {
@@ -22,10 +26,20 @@
         "size_bytes": 297352,
         "uploaded_at": "2026-05-20T16:15:03"
       }
+    ],
+    [
+      {
+        "file_name": "Dover GaiN SE - Codex User Manual - May 2026 -.pdf",
+        "stored_name": "4c0f5b5a6f004f9ea502c5f4b81f2e81_Dover GaiN SE - Codex User Manual - May 2026 -.pdf",
+        "relative_path": "f8c739d3-3d1b-47be-bdc0-a3aeed6b6f8f/4c0f5b5a6f004f9ea502c5f4b81f2e81_Dover GaiN SE - Codex User Manual - May 2026 -.pdf",
+        "mime_type": "application/pdf",
+        "size_bytes": 759168,
+        "uploaded_at": "2026-05-21T09:47:50"
+      }
     ]
   ],
   "initial_timestamp": "2026-05-20T16:15:03",
-  "submission_timestamp": "2026-05-20T16:15:03",
+  "submission_timestamp": "2026-05-21T09:47:50",
   "completion_timestamp": null,
   "status": "in-progress"
 }

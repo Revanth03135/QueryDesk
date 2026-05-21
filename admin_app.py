@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from pathlib import Path
 from datetime import datetime
+from html import escape
 from typing import Any
 
 import streamlit as st
@@ -229,6 +231,150 @@ def build_pdf_data_url(file_bytes: bytes) -> str:
     return f"data:application/pdf;base64,{encoded}"
 
 
+def build_image_data_url(file_bytes: bytes, mime_type: str) -> str:
+    encoded = base64.b64encode(file_bytes).decode("utf-8")
+    return f"data:{mime_type};base64,{encoded}"
+
+
+def can_admin_respond(record: dict[str, Any]) -> bool:
+    queries = record.get("query", [])
+    responses = record.get("response", [])
+    return len(queries) > len(responses)
+
+
+def make_dom_id(value: str) -> str:
+    safe_value = re.sub(r"[^a-zA-Z0-9_-]", "-", value)
+    return safe_value.strip("-") or "image-preview"
+
+
+def render_clickable_image_preview(image_url: str, file_name: str, popup_key: str):
+    modal_id = make_dom_id(f"{popup_key}_modal")
+    safe_name = escape(file_name, quote=True)
+
+    st.markdown(
+        f"""
+        <div style="margin: 0.25rem 0 0.5rem 0;">
+            <style>
+                .image-thumb-{modal_id} {{
+                    width: 180px;
+                    max-width: 100%;
+                    height: auto;
+                    border-radius: 10px;
+                    border: 1px solid #d9d9d9;
+                    object-fit: cover;
+                    display: block;
+                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+                    cursor: zoom-in;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }}
+                .image-thumb-{modal_id}:hover {{
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+                }}
+                .image-modal-{modal_id} {{
+                    position: fixed;
+                    top: 4.75rem;
+                    right: 1.25rem;
+                    bottom: 1.25rem;
+                    left: 22rem;
+                    background: rgba(0, 0, 0, 0.78);
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 1.5rem;
+                    box-sizing: border-box;
+                    border-radius: 18px;
+                    overflow: auto;
+                    z-index: 998;
+                }}
+                .image-modal-{modal_id}:target {{
+                    display: flex;
+                }}
+                .image-modal-content-{modal_id} {{
+                    position: relative;
+                    max-width: min(100%, 1100px);
+                    max-height: 100%;
+                    width: fit-content;
+                    margin: auto;
+                }}
+                .image-modal-content-{modal_id} img {{
+                    max-width: 100%;
+                    max-height: calc(100vh - 10rem);
+                    width: auto;
+                    height: auto;
+                    border-radius: 16px;
+                    border: 1px solid rgba(255, 255, 255, 0.18);
+                    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.32);
+                    display: block;
+                    background: #fff;
+                }}
+                .image-modal-close-{modal_id} {{
+                    position: absolute;
+                    top: -0.75rem;
+                    right: -0.75rem;
+                    width: 2.25rem;
+                    height: 2.25rem;
+                    border-radius: 999px;
+                    background: #fff;
+                    color: #111827;
+                    text-decoration: none;
+                    font-size: 1.4rem;
+                    font-weight: 700;
+                    line-height: 2.15rem;
+                    text-align: center;
+                    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+                }}
+                .image-modal-caption-{modal_id} {{
+                    margin-top: 0.75rem;
+                    color: #f9fafb;
+                    text-align: center;
+                    font-size: 0.95rem;
+                }}
+                .image-preview-hint-{modal_id} {{
+                    margin-top: 0.35rem;
+                    color: #6b7280;
+                    font-size: 0.85rem;
+                }}
+                @media (max-width: 991px) {{
+                    .image-modal-{modal_id} {{
+                        top: 4.5rem;
+                        right: 0.75rem;
+                        bottom: 0.75rem;
+                        left: 0.75rem;
+                        padding: 1rem;
+                    }}
+                    .image-modal-content-{modal_id} img {{
+                        max-height: calc(100vh - 8rem);
+                    }}
+                }}
+            </style>
+            <a href="#{modal_id}" style="text-decoration: none;">
+                <img
+                    src="{image_url}"
+                    alt="{safe_name}"
+                    title="Click to open a larger preview"
+                    class="image-thumb-{modal_id}"
+                />
+            </a>
+            <div class="image-preview-hint-{modal_id}">Click the image to open a larger preview.</div>
+            <div id="{modal_id}" class="image-modal-{modal_id}">
+                <a
+                    href="#"
+                    style="position: absolute; inset: 0;"
+                    aria-label="Close image preview"
+                ></a>
+                <div class="image-modal-content-{modal_id}">
+                    <a href="#" class="image-modal-close-{modal_id}" aria-label="Close preview">&times;</a>
+                    <img src="{image_url}" alt="{safe_name}" />
+                    <div class="image-modal-caption-{modal_id}">{safe_name}</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_attachment_downloads(user_id: str, attachments: list[dict[str, Any]], prefix: str):
     if not attachments:
         return
@@ -245,7 +391,12 @@ def render_attachment_downloads(user_id: str, attachments: list[dict[str, Any]],
             continue
 
         if mime_type.startswith("image/"):
-            st.image(file_bytes, caption=f"{file_name} ({size_label})", use_container_width=True)
+            image_url = build_image_data_url(file_bytes, mime_type)
+            render_clickable_image_preview(
+                image_url,
+                file_name,
+                f"{prefix}_image_{index}",
+            )
 
         if mime_type == "application/pdf":
             pdf_url = build_pdf_data_url(file_bytes)
@@ -558,11 +709,14 @@ def main():
 
     render_chat(record, user_id)
 
-    admin_reply = st.chat_input("Respond to the user")
+    if can_admin_respond(record):
+        admin_reply = st.chat_input("Respond to the user")
 
-    if admin_reply:
-        append_admin_response(user_id, request_id, admin_reply)
-        st.rerun()
+        if admin_reply:
+            append_admin_response(user_id, request_id, admin_reply)
+            st.rerun()
+    else:
+        st.info("You can reply after the user sends a new query.")
 
     col1, col2 = st.columns(2)
 
