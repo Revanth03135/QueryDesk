@@ -150,7 +150,7 @@ QueryDesk
     return send_email(subject, body, admin_emails)
 
 
-def get_department_directories() -> list[Path]:
+def get_user_directories() -> list[Path]:
     if not REQUESTS_DIR.exists():
         return []
 
@@ -161,53 +161,49 @@ def check_and_send_alerts() -> list[str]:
     now = datetime.now()
     alerted_requests: list[str] = []
 
-    for department_dir in get_department_directories():
-        for user_dir in department_dir.iterdir():
-            if not user_dir.is_dir():
+    for user_dir in get_user_directories():
+        tracking_path = user_dir / "tracking.json"
+        entries = read_json(tracking_path, [])
+
+        if not isinstance(entries, list):
+            continue
+
+        updated = False
+
+        for entry in entries:
+            if entry.get("status") != RequestStatus.IN_PROGRESS:
                 continue
 
-            tracking_path = user_dir / "tracking.json"
-            entries = read_json(tracking_path, [])
-
-            if not isinstance(entries, list):
+            if entry.get("alert_mail_sent"):
                 continue
 
-            updated = False
+            start_timestamp = parse_timestamp(
+                entry.get("start_timestamp")
+                or entry.get("initial_timestamp")
+                or entry.get("latest_submission_timestamp")
+                or entry.get("submission_timestamp")
+            )
+            if start_timestamp is None:
+                continue
 
-            for entry in entries:
-                if entry.get("status") != RequestStatus.IN_PROGRESS:
-                    continue
+            if now <= start_timestamp + timedelta(seconds=ALERT_THRESHOLD_SECONDS):
+                continue
 
-                if entry.get("alert_mail_sent"):
-                    continue
+            request_id = str(entry.get("query_id", ""))
+            user_name = str(entry.get("name", "Unknown"))
+            if send_query_alert_email(
+                user_id=user_dir.name,
+                request_id=request_id,
+                user_name=user_name,
+                started_at=start_timestamp.isoformat(timespec="seconds"),
+            ):
+                entry["alert_mail_sent"] = True
+                entry["alert_mail_sent_at"] = now.isoformat(timespec="seconds")
+                alerted_requests.append(request_id)
+                updated = True
 
-                start_timestamp = parse_timestamp(
-                    entry.get("start_timestamp")
-                    or entry.get("initial_timestamp")
-                    or entry.get("latest_submission_timestamp")
-                    or entry.get("submission_timestamp")
-                )
-                if start_timestamp is None:
-                    continue
-
-                if now <= start_timestamp + timedelta(seconds=ALERT_THRESHOLD_SECONDS):
-                    continue
-
-                request_id = str(entry.get("query_id", ""))
-                user_name = str(entry.get("name", "Unknown"))
-                if send_query_alert_email(
-                    user_id=user_dir.name,
-                    request_id=request_id,
-                    user_name=user_name,
-                    started_at=start_timestamp.isoformat(timespec="seconds"),
-                ):
-                    entry["alert_mail_sent"] = True
-                    entry["alert_mail_sent_at"] = now.isoformat(timespec="seconds")
-                    alerted_requests.append(request_id)
-                    updated = True
-
-            if updated:
-                tracking_path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+        if updated:
+            tracking_path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
 
     return alerted_requests
 
@@ -215,38 +211,34 @@ def check_and_send_alerts() -> list[str]:
 def process_new_request_notifications() -> list[str]:
     notified_requests: list[str] = []
 
-    for department_dir in get_department_directories():
-        for user_dir in department_dir.iterdir():
-            if not user_dir.is_dir():
+    for user_dir in get_user_directories():
+        tracking_path = user_dir / "tracking.json"
+        entries = read_json(tracking_path, [])
+
+        if not isinstance(entries, list):
+            continue
+
+        updated = False
+
+        for entry in entries:
+            if entry.get("request_mail_sent"):
                 continue
 
-            tracking_path = user_dir / "tracking.json"
-            entries = read_json(tracking_path, [])
+            request_id = str(entry.get("query_id", ""))
+            user_name = str(entry.get("name", "Unknown"))
 
-            if not isinstance(entries, list):
-                continue
+            request_payload = read_json(user_dir / f"{request_id}.json", {})
+            query_items = request_payload.get("query", []) if isinstance(request_payload, dict) else []
+            query_text = query_items[0] if query_items else "No query text available."
 
-            updated = False
+            if send_query_request_email(user_name, request_id, query_text):
+                entry["request_mail_sent"] = True
+                entry["request_mail_sent_at"] = datetime.now().isoformat(timespec="seconds")
+                notified_requests.append(request_id)
+                updated = True
 
-            for entry in entries:
-                if entry.get("request_mail_sent"):
-                    continue
-
-                request_id = str(entry.get("query_id", ""))
-                user_name = str(entry.get("name", "Unknown"))
-
-                request_payload = read_json(user_dir / f"{request_id}.json", {})
-                query_items = request_payload.get("query", []) if isinstance(request_payload, dict) else []
-                query_text = query_items[0] if query_items else "No query text available."
-
-                if send_query_request_email(user_name, request_id, query_text):
-                    entry["request_mail_sent"] = True
-                    entry["request_mail_sent_at"] = datetime.now().isoformat(timespec="seconds")
-                    notified_requests.append(request_id)
-                    updated = True
-
-            if updated:
-                tracking_path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
+        if updated:
+            tracking_path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
 
     return notified_requests
 
